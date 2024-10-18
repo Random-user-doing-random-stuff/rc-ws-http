@@ -10,7 +10,9 @@ POST /user/register
 ```
 
 
+
 ## Login 
+### Request
 
 ```
 POST /user/login
@@ -19,4 +21,10 @@ POST /user/login
   "password" : string,
 }
   
+```
+### Response
+```
+{
+  "token": string
+}
 ```
