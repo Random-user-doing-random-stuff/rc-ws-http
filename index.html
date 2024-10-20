@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+</head>
+<body>
+    <h1>WebSocket Chat</h1>
+    <input type="text" id="messageInput" placeholder="Enter your message">
+    <button onclick="sendMessage()">Send</button>
+    <div id="chat"></div>
+
+    <script>
+        // input for jwt token
+        const jwt_token = window.prompt("Enter your JWT token:", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MTExNjlmZmYwMTRlZjZlOTAzNDNmMyIsIm5hbWUiOiJPaSIsImlhdCI6MTcyOTQxMTk2NSwiZXhwIjoxNzI5NDE1NTY1fQ.Rl2NFYqRVB175ES2G6DRdnWxiuJbiW8s1KEiFoUbzKE");
+
+        //input for roomId
+        const roomId =  window.prompt("Enter your roomId:", "1234");
+        let socket;
+
+        // Function to connect to the WebSocket server with JWT and roomId
+        function connectWebSocket(token) {
+            socket = new WebSocket(`ws://localhost:8080?token=${token}&roomId=${roomId}`);
+
+            socket.onopen = () => {
+                console.log('Connected to WebSocket');
+            };
+
+            socket.onmessage = (event) => {
+                const chat = document.getElementById('chat');
+                chat.innerHTML += `<p>${event.data}</p>`;
+                console.log('Message from server:', event.data);
+            };
+
+            socket.onclose = () => {
+                console.log('Disconnected from WebSocket');
+            };
+        }
+
+        // Example function to send a message
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            socket.send(input.value);
+            input.value = '';
+        }
+
+        // Connect with a JWT token
+        connectWebSocket(jwt_token);
+     
+    </script>
+</body>
+</html>

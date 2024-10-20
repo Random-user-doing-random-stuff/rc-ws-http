@@ -1,7 +1,6 @@
 const { client } = require("../../../db/connection");
 const user = require("../../../db/schemas/user");
 const register = (req, res) => {
-  console.log(req.body);
   user.name = req.body.name;
   user.email = req.body.email;
   user.password = req.body.password;
