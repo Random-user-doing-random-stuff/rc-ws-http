@@ -6,6 +6,6 @@ const wss = require("./api/websocket/ws");
 
 const port = 3000;
 
-app.listen(port, () => {
+app.listen(port, "127.0.0.1", () => {
     console.log(`Server running on http://localhost:${port}`);
 });

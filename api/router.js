@@ -8,7 +8,7 @@ const register = require("./routes/user/register");
 app.use(express.json());
 
 app.post("/user/login", login);
-app.get("/", root);
 app.post("/user/register", register);
+app.get("/", root);
 
 module.exports = { app };
