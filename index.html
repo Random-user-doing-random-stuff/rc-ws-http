@@ -1,53 +1,274 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat App</title>
 </head>
 <body>
-    <h1>WebSocket Chat</h1>
-    <input type="text" id="messageInput" placeholder="Enter your message">
-    <button onclick="sendMessage()">Send</button>
-    <div id="chat"></div>
 
+
+<style>
+    /* Estilos principais para a aplicação de chat */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f3f4f6;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    background-color: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Estilos da barra lateral */
+.sidebar {
+    width: 25%;
+    background-color: #374151;
+    color: #ffffff;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-align: center;
+    color: #d1d5db;
+}
+
+.chat-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.chat-list li {
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: #4b5563;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    color: #f3f4f6;
+    transition: background-color 0.3s;
+}
+
+.chat-list li:hover {
+    background-color: #6b7280;
+}
+
+/* Estilos do container de chat */
+.chat-container {
+    width: 75%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    background-color: #4f46e5;
+    color: #ffffff;
+    padding: 15px;
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #f9fafb;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Estilos para as mensagens */
+.chat-messages .message {
+    margin-bottom: 15px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    max-width: 60%;
+    display: inline-block;
+    word-wrap: break-word; /* Força a quebra de linha para palavras longas */
+    overflow-wrap: break-word; /* Garante que palavras longas sejam quebradas */
+}
+
+/* Mensagens do usuário atual (pastel verde) */
+.chat-messages .message.user {
+    background-color: #a7d8f3;
+    align-self: flex-end;
+    color: #062a5f;
+    margin-left: auto; /* Move to the right */
+    border-radius: 12px 12px 0 12px; /* Rounded corners */
+}
+
+/* Mensagens de outros usuários (pastel lilás) */
+.chat-messages .message.other {
+    background-color: #ddd6fe;
+    align-self: flex-start;
+    color: #5b21b6;
+    margin-right: auto; /* Align to the left */
+    border-radius: 12px 12px 12px 0; /* Rounded corners */
+    border: 1px solid #e5e7eb;
+}
+
+/* Estilos do input de chat */
+.chat-input {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #e5e7eb;
+    background-color: #f3f4f6;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin-right: 10px;
+    background-color: #ffffff;
+    color: #374151;
+}
+
+.chat-input button {
+    padding: 10px 20px;
+    background-color: #4f46e5;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.chat-input button:hover {
+    background-color: #4338ca;
+}
+
+</style>
+    
+    <div class="app-container">
+        <div class="sidebar">
+            <h2>Chats</h2>
+            <ul class="chat-list">
+                <li onclick="openChat('chat1')">Chat 1</li>
+                <li onclick="openChat('chat2')">Chat 2</li>
+                <li onclick="openChat('chat3')">Chat 3</li>
+            </ul>
+        </div>
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2 id="chat-title">Chat 1</h2>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <!-- Mensagens do chat ativo aparecerão aqui -->
+            </div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+                <button onclick="sendMessage()">Enviar</button>
+            </div>
+        </div>
+    </div>
     <script>
-        // input for jwt token
-        const jwt_token = window.prompt("Enter your JWT token:", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MTExNjlmZmYwMTRlZjZlOTAzNDNmMyIsIm5hbWUiOiJPaSIsImlhdCI6MTcyOTQxMTk2NSwiZXhwIjoxNzI5NDE1NTY1fQ.Rl2NFYqRVB175ES2G6DRdnWxiuJbiW8s1KEiFoUbzKE");
 
-        //input for roomId
-        const roomId =  window.prompt("Enter your roomId:", "1234");
-        let socket;
+const chats = {
+    chat1: [
+        { text: 'Olá! Como vai?', sender: 'other' },
+        { text: 'Estou bem, e você?', sender: 'user' },
+        { text: 'Tudo ótimo, obrigado!', sender: 'other' }
+    ],
+    chat2: [
+        { text: 'Você viu o último episódio da série?', sender: 'other' },
+        { text: 'Ainda não, vou assistir hoje à noite.', sender: 'user' }
+    ],
+    chat3: [
+        { text: 'Vamos marcar algo para o fim de semana?', sender: 'user' },
+        { text: 'Claro, me avise quando estiver disponível!', sender: 'other' }
+    ]
+};
 
-        // Function to connect to the WebSocket server with JWT and roomId
-        function connectWebSocket(token) {
-            socket = new WebSocket(`ws://localhost:8080?token=${token}&roomId=${roomId}`);
+// Variável para rastrear o chat ativo
+let activeChat = 'chat 1';
 
-            socket.onopen = () => {
-                console.log('Connected to WebSocket');
-            };
+// Função para alternar entre chats
+function openChat(chatId) {
+    activeChat = chatId;
+    document.getElementById('chat-title').textContent = chatId.charAt(0).toUpperCase() + chatId.slice(1);
+    renderMessages();
+}
 
-            socket.onmessage = (event) => {
-                const chat = document.getElementById('chat');
-                chat.innerHTML += `<p>${event.data}</p>`;
-                console.log('Message from server:', event.data);
-            };
+// Função para renderizar mensagens do chat ativo
+function renderMessages() {
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.innerHTML = '';
 
-            socket.onclose = () => {
-                console.log('Disconnected from WebSocket');
-            };
-        }
+    chats[activeChat].forEach(message => {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+        messageElement.classList.add(message.sender === 'user' ? 'user' : 'other');
+        messageElement.textContent = message.text;
+        chatMessages.appendChild(messageElement);
+    });
 
-        // Example function to send a message
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            socket.send(input.value);
-            input.value = '';
-        }
+    // Rola para a última mensagem
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
-        // Connect with a JWT token
-        connectWebSocket(jwt_token);
-     
+// Função para enviar uma mensagem
+function sendMessage() {
+    const messageInput = document.getElementById('message-input');
+    const messageText = messageInput.value.trim();
+
+    if (messageText === '') return; // Não envia mensagens vazias
+
+    // Adiciona a mensagem ao chat ativo como sendo do usuário
+    chats[activeChat].push({ text: messageText, sender: 'user' });
+
+    // Renderiza novamente as mensagens
+    renderMessages();
+
+    // Limpa o campo de entrada de mensagem
+    messageInput.value = '';
+}
+
+// Inicializa o chat renderizando as mensagens do chat padrão
+renderMessages();
+
+// Create a new WebSocket connection
+const socket = new WebSocket('wss://43aaad4b-fbdd-4617-8fa9-29a31650791f-00-2ew5sh3vtonj2.kirk.replit.dev:8080');
+
+// Event listener for when the connection is opened
+socket.addEventListener('open', () => {
+    console.log('WebSocket connection opened');
+    // You can send data to the server here if needed
+    socket.send('Hello, server!');
+});
+
+// Event listener for receiving messages from the server
+socket.addEventListener('message', (event) => {
+    console.log('Message from server:', event.data);
+});
+
+// Event listener for when the connection is closed
+socket.addEventListener('close', () => {
+    console.log('WebSocket connection closed');
+});
+
+// Event listener for handling errors
+socket.addEventListener('error', (error) => {
+    console.error('WebSocket error:', error);
+});
+
     </script>
 </body>
 </html>

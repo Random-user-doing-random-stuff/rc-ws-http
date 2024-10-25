@@ -23,7 +23,7 @@ const register = async (req, res) => {
       .collection("users")
       .insertOne(newUser);
 
-    if (result.insertedCount === 1) {
+    if (result.insertedId) {
       console.log("User registered successfully");
       return res.sendStatus(200); // return to prevent further code execution
     } else {

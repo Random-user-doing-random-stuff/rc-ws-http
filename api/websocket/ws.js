@@ -1,71 +1,80 @@
+// /api/websocket/ws.js
+
 const WebSocket = require("ws");
 const jwt = require("jsonwebtoken");
+const { client } = require("../../db/connection");
+const { ObjectId } = require("mongodb");
 
-// Secret key for JWT (should match with the login server)
-const SECRET_KEY = "boas";
-
-// Create WebSocket server
+const SECRET_KEY = "boas"; // Same secret key used for JWT
 const wss = new WebSocket.Server({ port: 8080 });
 
-// Store clients by roomId
 const rooms = {};
 
-// Function to broadcast a message to everyone in the same room
 function broadcastToRoom(roomId, sender, message) {
-    if (rooms[roomId]) {
-        rooms[roomId].forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(message);
-            }
-        });
-    }
+  if (rooms[roomId]) {
+    rooms[roomId].forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
 }
 
 wss.on("connection", (ws, req) => {
-    // Extract the token and roomId from the WebSocket query string
-    const params = new URLSearchParams(req.url.split("?")[1]);
-    const token = params.get("token");
-    const roomId = params.get("roomId");
+  const params = new URLSearchParams(req.url.split("?")[1]);
+  const token = params.get("token");
+  const roomId = params.get("roomId");
 
-    // Verify the JWT token
-    jwt.verify(token, SECRET_KEY, (err, decoded) => {
-        if (err) {
-            ws.send("Invalid token");
-            ws.close();
-            return;
-        }
-        ws.user = decoded;
+  if (!token) {
+    ws.send("Authorization token required");
+    ws.close();
+    return;
+  }
 
-        // If the token is valid, the user is authenticated
-        ws.username = ws.user.username; // Assuming the JWT contains a username
+  jwt.verify(token, SECRET_KEY, async (err, decoded) => {
+    if (err) {
+      ws.send("Invalid token");
+      ws.close();
+      return;
+    }
 
-        // Add the client to the room
-        if (!rooms[roomId]) {
-            rooms[roomId] = [];
-        }
-        rooms[roomId].push(ws);
-        console.log(`${ws.username} joined room ${roomId}`);
+    // Extract user details from the decoded token
+    ws.user = decoded;
+    ws.username = ws.user.name; // Assuming 'name' exists in the JWT payload
 
-        ws.send(`Welcome ${ws.username}, you are in room ${roomId}`);
+    if (!rooms[roomId]) {
+      rooms[roomId] = [];
+    }
+    rooms[roomId].push(ws);
 
-        // Broadcast incoming messages to everyone in the room
-        ws.on("message", (message) => {
-            console.log(
-                `Message from ${ws.username} in room ${roomId}: ${message}`,
-            );
-            broadcastToRoom(roomId, ws, `${ws.username}: ${message}`);
-            rooms[roomId].forEach((client) => {
-                console.log(client.username);
-            });
-        });
+    ws.send(`Welcome ${ws.username}, you are in room ${roomId}`);
 
-        // Handle client disconnect
-        ws.on("close", () => {
-            console.log(`${ws.username} disconnected from room ${roomId}`);
-            // Remove the client from the room
-            rooms[roomId] = rooms[roomId].filter((client) => client !== ws);
-        });
+    ws.on("message", async (messageText) => {
+      console.log(`Message from ${ws.username} in room ${roomId}: ${messageText}`);
+
+      // Broadcast the message to everyone in the room
+      broadcastToRoom(roomId, ws, `${ws.username}: ${messageText}`);
+
+      // Save the message in the database
+      const message = {
+        chatRoomId: new ObjectId(roomId),
+        senderId: new ObjectId(ws.user.id), // Using decoded JWT for senderId
+        messageText,
+        createdAt: new Date(),
+      };
+
+      try {
+        await client.db("RC").collection("messages").insertOne(message);
+      } catch (error) {
+        console.error("Error saving message to DB:", error);
+      }
     });
+
+    ws.on("close", () => {
+      rooms[roomId] = rooms[roomId].filter((client) => client !== ws);
+      console.log(`${ws.username} disconnected from room ${roomId}`);
+    });
+  });
 });
 
 module.exports = wss;
