@@ -1,4 +1,4 @@
-const { app } = require("../router");
+const  app  = require("../router");
 const fs = require('fs');
 const path = require('path');
 

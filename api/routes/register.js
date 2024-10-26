@@ -2,7 +2,7 @@
 const path = require('path');
 
 const signin = (req, res) => {
-    res.sendFile(path.join(__dirname, '../../', 'login.html')); // Serve login.html file
+    res.sendFile(path.join(__dirname, '../../', 'register.html')); // Serve login.html file
 };
 
 module.exports = signin;
